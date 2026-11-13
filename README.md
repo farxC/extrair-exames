@@ -50,6 +50,19 @@ dos textos da coluna anterior. A configuração vale para todas as páginas.
 
 ## Validação necessária
 
+Se houver duas linhas de rodapé entre a tabela e a próxima página, use:
+
+```sh
+python extrair_exames.py documento.pdf exames.csv --linhas-rodape 2
+```
+
+Isso ignora as duas últimas linhas **de texto** de cada página, exceto a última,
+antes de interpretar a tabela. O funcionário e as posições das colunas são
+mantidos para a página seguinte. Linhas vazias e bordas não entram na contagem.
+Use essa opção apenas quando esse rodapé existir em todas as páginas intermediárias.
+O script interrompe se detectar data de exame ou rótulos pessoais nas linhas que
+seriam descartadas. O padrão continua sendo não descartar linhas.
+
 Este extrator é uma base para o layout descrito, não uma garantia de extração
 universal. Confira localmente a quantidade de exames, os vínculos com cada
 funcionário e os valores. Cabeçalhos/rodapés incomuns, campos quebrados em linhas,

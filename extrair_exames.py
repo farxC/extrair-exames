@@ -59,7 +59,9 @@ def cells(words, starts):
     return [' '.join(value) for value in values]
 
 
-def extract(pdf_path, output_path, starts=None, tolerance=3):
+def extract(pdf_path, output_path, starts=None, tolerance=3, footer_lines=0):
+    if type(footer_lines) is not int or footer_lines < 0:
+        raise ValueError('A quantidade de linhas de rodapé deve ser um inteiro não negativo.')
     rows, warnings = [], []
     employee, pending = {}, None
     columns = starts
@@ -80,7 +82,16 @@ def extract(pdf_path, output_path, starts=None, tolerance=3):
             words = page.extract_words(x_tolerance=2, y_tolerance=tolerance)
             if not words:
                 raise ValueError(f'Página {page_number} sem texto extraível. É necessário OCR local.')
-            for line in lines(words, tolerance):
+            page_lines = lines(words, tolerance)
+            if footer_lines and page_number < len(pdf.pages):
+                if len(page_lines) <= footer_lines:
+                    raise ValueError(f'Página {page_number}: descarte de rodapé removeria toda a página.')
+                for footer in page_lines[-footer_lines:]:
+                    footer_text = ' '.join(w['text'] for w in footer)
+                    if DATE.match(footer_text) or LABEL.search(footer_text):
+                        raise ValueError(f'Página {page_number}: rodapé configurado contém exame ou dados do funcionário. Revise --linhas-rodape.')
+                page_lines = page_lines[:-footer_lines]
+            for line in page_lines:
                 text = ' '.join(w['text'] for w in line)
                 labels = list(LABEL.finditer(text))
                 if labels:
@@ -139,6 +150,8 @@ def main():
     parser.add_argument('csv', type=Path)
     parser.add_argument('--colunas', type=Path, help='JSON com cinco posições iniciais em pontos PDF.')
     parser.add_argument('--tolerancia-linha', type=float, default=3)
+    parser.add_argument('--linhas-rodape', type=int, default=0,
+                        help='Ignora N últimas linhas de texto antes de cada quebra de página; preserva a última página.')
     args = parser.parse_args()
     try:
         starts = json.loads(args.colunas.read_text()) if args.colunas else None
@@ -146,7 +159,7 @@ def main():
                                   or not all(type(x) in (int, float) for x in starts)
                                   or starts != sorted(set(starts))):
             raise ValueError('A configuração precisa conter cinco números em ordem crescente.')
-        count = extract(args.pdf, args.csv, starts, args.tolerancia_linha)
+        count = extract(args.pdf, args.csv, starts, args.tolerancia_linha, args.linhas_rodape)
     except (ValueError, OSError) as error:
         parser.exit(1, f'Erro: {error}\n')
     print(f'{count} exames exportados para {args.csv}')
