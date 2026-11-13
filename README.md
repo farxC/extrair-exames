@@ -20,6 +20,23 @@ Um arquivo de saída existente nunca é sobrescrito.
 
 ## Layout esperado
 
+### Processar uma pasta inteira
+
+```sh
+python extrair_pasta.py "./documentos" "./resultados" --linhas-rodape 2
+```
+
+Lê todos os arquivos `.pdf` ou `.PDF` diretamente na pasta de entrada, sem
+percorrer subpastas. Gera um CSV por documento (`arquivo.pdf` → `arquivo.csv`)
+na pasta de saída, criada automaticamente. As opções `--colunas`,
+`--tolerancia-linha` e `--linhas-rodape` são aplicadas a todos os documentos.
+Use a opção de rodapé somente se todos tiverem esse padrão.
+
+Arquivos com erro são informados no terminal; os demais continuam sendo
+processados. CSVs existentes são preservados e reportados como erro, nunca
+sobrescritos. O comando termina com código 1 se houver falhas ou nenhum PDF;
+caso contrário, termina com código 0. Não combina documentos num único CSV.
+
 - Rótulos `FUNCIONÁRIO:`, `CPF:`, `SETOR:` e `FUNÇÃO:` antes da tabela,
   juntos ou em linhas separadas. Cada valor deve estar na mesma linha do rótulo.
 - Um novo `FUNCIONÁRIO:` inicia um novo bloco.
