@@ -26,9 +26,12 @@ def create_target_workbook(path):
     sheet.append([
         'CPF COLABORADOR', 'NOME COLABORADOR', 'EXAME LAB. UERIA',
         'EXAME CLINICO AUDIOMETRICO', 'OUTRA COLUNA',
+        'EXAME CLINICO ECG - ELETROCARDIOGRAMA',
+        'EXAME CLINICO EEG - ELETROENCEFALOGRAMA',
+        'EXAME CLINICO OPTOMETRIA - TESTE VISUAL',
     ])
-    sheet.append(['000.000.000-00', 'Ana Exemplo', 'ADMISSIONAL', '', 'não alterar'])
-    sheet.append(['111.111.111-11', 'Bruno Exemplo', '', '', 'não alterar'])
+    sheet.append(['000.000.000-00', 'Ana Exemplo', 'ADMISSIONAL', '', 'não alterar', '', '', ''])
+    sheet.append(['111.111.111-11', 'Bruno Exemplo', '', '', 'não alterar', '', '', ''])
     workbook.save(path)
 
 
@@ -101,6 +104,32 @@ class FillWorkbookTests(unittest.TestCase):
             changed = fill_workbook(source, target, output)
 
             self.assertEqual(changed, 1)
+
+    def test_fill_workbook_maps_procedures_with_hyphen_spacing_and_egg_alias(self):
+        with TemporaryDirectory() as directory:
+            workspace = Path(directory)
+            source = workspace / 'base.csv'
+            target = workspace / 'modelo.xlsx'
+            output = workspace / 'resultado.xlsx'
+            create_csv(source, [
+                {'procedimento': 'ECG - ELETROCARDIOGRAMA', 'funcionário': 'Bruno Exemplo',
+                 'cpf': '', 'tipo do exame': 'PERIÓDICO', 'campo ignorado': ''},
+                {'procedimento': 'EGG - ELETROENCEFALOGRAMA', 'funcionário': 'Bruno Exemplo',
+                 'cpf': '', 'tipo do exame': 'PERIÓDICO', 'campo ignorado': ''},
+                {'procedimento': 'OPTOMETRIA - TESTE VISUAL', 'funcionário': 'Bruno Exemplo',
+                 'cpf': '', 'tipo do exame': 'PERIÓDICO', 'campo ignorado': ''},
+            ])
+            create_target_workbook(target)
+
+            changed = fill_workbook(source, target, output)
+
+            self.assertEqual(changed, 3)
+            workbook = load_workbook(output, data_only=True)
+            sheet = workbook.active
+            self.assertEqual(sheet.cell(4, 6).value, 'PERIÓDICO')
+            self.assertEqual(sheet.cell(4, 7).value, 'PERIÓDICO')
+            self.assertEqual(sheet.cell(4, 8).value, 'PERIÓDICO')
+            workbook.close()
 
     def test_fill_workbook_rejects_csv_without_required_columns(self):
         with TemporaryDirectory() as directory:

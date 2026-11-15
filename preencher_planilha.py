@@ -12,12 +12,13 @@ CSV_FIELDS = ('procedimento', 'funcionario', 'tipo do exame')
 CPF_HEADERS = ('CPF', 'CPF COLABORADOR')
 EMPLOYEE_HEADERS = ('FUNCIONARIO', 'NOME COLABORADOR')
 HEADER_SEARCH_ROWS = 50
-PROCEDURE_TO_COLUMN = {
+PROCEDURE_TO_COLUMN_RAW = {
     'AUDIOMETRICO': 'EXAME CLINICO AUDIOMETRICO',
     'AVALIACAO ACID DE TRABALHO': 'EXAME CLINICO AVALIACAO ACID DE TRABALHO',
     'AVALIACAO DE AFASTAMENTO': 'EXAME CLINICO AVALIACAO DE AFASTAMENTO',
-    'ECG-ELETROCARDIOGRAMA': 'EXAME CLINICO ECG-ELETROCARDIOGRAMA',
+    'ECG-ELETROCARDIOGRAMA': 'EXAME CLINICO ECG - ELETROCARDIOGRAMA',
     'EEG - ELETROENCEFALOGRAMA': 'EXAME CLINICO EEG - ELETROENCEFALOGRAMA',
+    'EGG - ELETROENCEFALOGRAMA': 'EXAME CLINICO EEG - ELETROENCEFALOGRAMA',
     'ESPIROMETRIA': 'EXAME CLINICO ESPIROMETRIA',
     'OCUPACIONAL': 'EXAME CLINICO OCUPACIONAL',
     'OPTOMETRIA - TESTE VISUAL': 'EXAME CLINICO OPTOMETRIA - TESTE VISUAL',
@@ -56,6 +57,12 @@ def canonical(value):
     text = ''.join(char for char in unicodedata.normalize('NFD', text.upper())
                    if unicodedata.category(char) != 'Mn')
     return ' '.join(''.join(char if char.isalnum() else ' ' for char in text).split())
+
+
+PROCEDURE_TO_COLUMN = {
+    canonical(procedure): target_column
+    for procedure, target_column in PROCEDURE_TO_COLUMN_RAW.items()
+}
 
 
 def text_value(value):
