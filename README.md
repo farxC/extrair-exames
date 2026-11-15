@@ -55,10 +55,12 @@ linhas informativas acima dele são ignorados.
 python preencher_planilha.py exames.csv planilha_alvo.xlsx planilha_preenchida.xlsx
 ```
 
-O CSV é lido com `;` e usa estritamente as colunas `procedimento`, `cpf` e
-`tipo do exame`; demais colunas são ignoradas. O CPF é comparado somente pelos
-dígitos, permitindo que o CSV use `00000000000` e a planilha use
-`000.000.000-00`.
+O CSV é lido com `;` e usa estritamente as colunas `procedimento`,
+`funcionário`, `cpf` e `tipo do exame`; demais colunas são ignoradas.
+`funcionário` é obrigatório; `cpf` é opcional, inclusive como coluna. Quando
+informado, o CPF é comparado somente pelos dígitos, permitindo que o CSV use
+`00000000000` e a planilha use `000.000.000-00`. Se os dois forem informados,
+eles devem identificar a mesma pessoa na planilha alvo.
 
 O script converte cada procedimento para a nomenclatura padronizada informada,
 encontra a coluna correspondente e insere o `tipo do exame` na célula da pessoa
@@ -67,9 +69,9 @@ presentes não são duplicados. O cabeçalho da planilha pode estar nas primeira
 50 linhas. A planilha original nunca é alterada: o terceiro argumento deve ser
 um novo arquivo `.xlsx`.
 
-O comando falha, sem criar saída, se o CSV não tiver uma das três colunas
-obrigatórias, se houver procedimento sem nomenclatura cadastrada, CPF ausente
-na planilha alvo ou coluna de exame inexistente.
+O comando falha, sem criar saída, se o CSV não tiver uma das colunas
+obrigatórias, se houver procedimento sem nomenclatura cadastrada, pessoa não
+encontrada na planilha alvo ou coluna de exame inexistente.
 
 ## Layout esperado
 

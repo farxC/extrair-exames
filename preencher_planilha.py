@@ -8,8 +8,9 @@ from openpyxl import load_workbook
 from openpyxl.utils.exceptions import InvalidFileException
 
 
-CSV_FIELDS = ('procedimento', 'cpf', 'tipo do exame')
+CSV_FIELDS = ('procedimento', 'funcionario', 'tipo do exame')
 CPF_HEADERS = ('CPF', 'CPF COLABORADOR')
+EMPLOYEE_HEADERS = ('FUNCIONARIO', 'NOME COLABORADOR')
 HEADER_SEARCH_ROWS = 50
 PROCEDURE_TO_COLUMN = {
     'AUDIOMETRICO': 'EXAME CLINICO AUDIOMETRICO',
@@ -84,22 +85,24 @@ def read_csv_rows(source_path):
         missing = [field for field in CSV_FIELDS if canonical(field) not in fields]
         if missing:
             raise ValueError(f'Coluna obrigatória ausente no CSV: {", ".join(missing)}')
+        cpf_field = fields.get(canonical('cpf'))
 
         mapped_rows = []
         unknown_procedures = set()
         for line_number, row in enumerate(reader, 2):
             procedure = text_value(row[fields[canonical('procedimento')]])
-            cpf = cpf_digits(row[fields[canonical('cpf')]])
+            employee = text_value(row[fields[canonical('funcionario')]])
+            cpf = cpf_digits(row[cpf_field]) if cpf_field else ''
             exam_type = text_value(row[fields[canonical('tipo do exame')]])
-            if not procedure and not cpf and not exam_type:
+            if not procedure and not employee and not cpf and not exam_type:
                 continue
-            if not procedure or not cpf or not exam_type:
+            if not procedure or not employee or not exam_type:
                 raise ValueError(f'Linha {line_number} do CSV possui dado obrigatório vazio.')
             target_column = PROCEDURE_TO_COLUMN.get(canonical(procedure))
             if not target_column:
                 unknown_procedures.add(procedure)
                 continue
-            mapped_rows.append((cpf, target_column, exam_type))
+            mapped_rows.append((cpf, employee, target_column, exam_type))
     if unknown_procedures:
         raise ValueError('Procedimento sem nomenclatura cadastrada: '
                          + ', '.join(sorted(unknown_procedures)))
@@ -112,18 +115,19 @@ def find_target_header(sheet):
     for row_number, row in enumerate(
             sheet.iter_rows(max_row=HEADER_SEARCH_ROWS, values_only=True), 1):
         headers = indexed_headers(row)
-        if any(canonical(name) in headers for name in CPF_HEADERS):
+        if (any(canonical(name) in headers for name in CPF_HEADERS)
+                or any(canonical(name) in headers for name in EMPLOYEE_HEADERS)):
             return row_number, headers
-    raise ValueError('Coluna CPF não encontrada nas primeiras '
+    raise ValueError('Coluna CPF ou funcionário não encontrada nas primeiras '
                      f'{HEADER_SEARCH_ROWS} linhas da planilha alvo.')
 
 
-def column_for_cpf(headers):
-    for name in CPF_HEADERS:
+def column_for(headers, names):
+    for name in names:
         column = headers.get(canonical(name))
         if column is not None:
             return column
-    raise ValueError('Coluna CPF não encontrada na planilha alvo.')
+    return None
 
 
 def append_value(existing, new_value):
@@ -155,8 +159,14 @@ def fill_workbook(csv_path, target_path, output_path):
     try:
         sheet = workbook.active
         header_row, headers = find_target_header(sheet)
-        cpf_column = column_for_cpf(headers)
-        required_columns = {canonical(target_column) for _, target_column, _ in source_rows}
+        cpf_column = column_for(headers, CPF_HEADERS)
+        employee_column = column_for(headers, EMPLOYEE_HEADERS)
+        if employee_column is None:
+            raise ValueError('Coluna funcionário não encontrada na planilha alvo.')
+        if any(cpf for cpf, _, _, _ in source_rows) and cpf_column is None:
+            raise ValueError('Coluna CPF não encontrada na planilha alvo.')
+
+        required_columns = {canonical(target_column) for _, _, target_column, _ in source_rows}
         missing_columns = sorted(
             target_column for target_column in required_columns if target_column not in headers
         )
@@ -164,22 +174,43 @@ def fill_workbook(csv_path, target_path, output_path):
             raise ValueError('Coluna de exame não encontrada na planilha alvo: '
                              + ', '.join(missing_columns))
 
-        target_rows = {}
+        target_rows_by_cpf = {}
+        target_rows_by_employee = {}
         for row in sheet.iter_rows(min_row=header_row + 1):
-            cpf = cpf_digits(row[cpf_column].value)
-            if not cpf:
-                continue
-            if cpf in target_rows:
-                raise ValueError(f'CPF duplicado na planilha alvo: {cpf}')
-            target_rows[cpf] = row
+            if cpf_column is not None:
+                cpf = cpf_digits(row[cpf_column].value)
+                if cpf:
+                    if cpf in target_rows_by_cpf:
+                        raise ValueError(f'CPF duplicado na planilha alvo: {cpf}')
+                    target_rows_by_cpf[cpf] = row
+            employee = canonical(row[employee_column].value)
+            if employee:
+                if employee in target_rows_by_employee:
+                    raise ValueError(f'Funcionário duplicado na planilha alvo: {employee}')
+                target_rows_by_employee[employee] = row
 
-        missing_cpfs = sorted({cpf for cpf, _, _ in source_rows if cpf not in target_rows})
-        if missing_cpfs:
-            raise ValueError('CPF não encontrado na planilha alvo: ' + ', '.join(missing_cpfs))
+        missing_people = []
+        selected_rows = []
+        for cpf, employee, target_column, exam_type in source_rows:
+            row_by_cpf = target_rows_by_cpf.get(cpf) if cpf else None
+            row_by_employee = target_rows_by_employee.get(canonical(employee))
+            if cpf and row_by_cpf is None:
+                missing_people.append(f'CPF {cpf}')
+                continue
+            if row_by_employee is None:
+                missing_people.append(f'funcionário {employee}')
+                continue
+            if row_by_cpf is not None and row_by_cpf != row_by_employee:
+                raise ValueError('CPF e funcionário apontam para pessoas diferentes: '
+                                 f'{cpf} / {employee}')
+            selected_rows.append((row_by_cpf or row_by_employee, target_column, exam_type))
+        if missing_people:
+            raise ValueError('Pessoa não encontrada na planilha alvo: '
+                             + ', '.join(sorted(set(missing_people))))
 
         changed = 0
-        for cpf, target_column, exam_type in source_rows:
-            cell = target_rows[cpf][headers[canonical(target_column)]]
+        for row, target_column, exam_type in selected_rows:
+            cell = row[headers[canonical(target_column)]]
             merged_value = append_value(cell.value, exam_type)
             if merged_value != text_value(cell.value):
                 cell.value = merged_value
@@ -192,7 +223,8 @@ def fill_workbook(csv_path, target_path, output_path):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('csv', type=Path, help='CSV de entrada com procedimento, cpf e tipo do exame.')
+    parser.add_argument('csv', type=Path,
+                        help='CSV com procedimento, funcionário, CPF opcional e tipo do exame.')
     parser.add_argument('planilha_alvo', type=Path, help='Planilha .xlsx que receberá os dados.')
     parser.add_argument('saida', type=Path, help='Nova planilha .xlsx preenchida.')
     args = parser.parse_args()
