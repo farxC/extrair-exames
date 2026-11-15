@@ -18,6 +18,35 @@ tipo do exame e valor. Valores monetários e CPFs são preservados como texto.
 Ao importar no Excel, escolha o tipo Texto para CPF, preservando zeros iniciais.
 Um arquivo de saída existente nunca é sobrescrito.
 
+## Converter planilha Excel para o mesmo CSV
+
+```sh
+python extrair_planilha.py exames.xlsx exames.csv
+```
+
+O arquivo deve ser `.xlsx`; somente a primeira aba é lida. Cada linha
+representa um colaborador e cada coluna após `TIPO DO EXAME` representa um
+exame. Para cada célula de exame preenchida, o programa cria uma linha no CSV,
+repetindo os dados do colaborador. Células vazias (inclusive contendo apenas
+espaços) não geram linhas.
+
+Os cabeçalhos obrigatórios são `FORNECEDOR`, `CPF COLABORADOR`, `NOME
+COLABORADOR`, `CENTRO DE CUSTO` e `TIPO DO EXAME`. A comparação ignora
+maiúsculas/minúsculas, acentos e quebras de linha. `LOCAL PRESTAÇÃO SERVIÇO`
+não é exportado, pois não há campo correspondente no CSV atual.
+
+| Campo CSV | Coluna Excel |
+| --- | --- |
+| funcionário | NOME COLABORADOR |
+| cpf | CPF COLABORADOR |
+| setor | CENTRO DE CUSTO |
+| função | vazio |
+| data exame | vazio |
+| procedimento | nome da coluna de exame, por exemplo `UREIA` |
+| prestador | FORNECEDOR |
+| tipo do exame | TIPO DO EXAME |
+| valor | conteúdo da célula do exame |
+
 ## Layout esperado
 
 ### Processar uma pasta inteira
