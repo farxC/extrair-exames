@@ -34,6 +34,8 @@ Os cabeçalhos obrigatórios são `FORNECEDOR`, `CPF COLABORADOR`, `NOME
 COLABORADOR`, `CENTRO DE CUSTO` e `TIPO DO EXAME`. A comparação ignora
 maiúsculas/minúsculas, acentos e quebras de linha. `LOCAL PRESTAÇÃO SERVIÇO`
 não é exportado, pois não há campo correspondente no CSV atual.
+O cabeçalho pode estar em qualquer uma das primeiras 50 linhas; títulos ou
+linhas informativas acima dele são ignorados.
 
 | Campo CSV | Coluna Excel |
 | --- | --- |

@@ -17,6 +17,7 @@ REQUIRED_HEADERS = (
     'CENTRO DE CUSTO',
     'TIPO DO EXAME',
 )
+HEADER_SEARCH_ROWS = 50
 
 
 def normalized_header(value):
@@ -41,10 +42,21 @@ def header_positions(header):
         if key in positions:
             raise ValueError(f'Cabeçalho duplicado: {key}')
         positions[key] = index
-    missing = [name for name in REQUIRED_HEADERS if name not in positions]
-    if missing:
-        raise ValueError(f'Cabeçalho obrigatório ausente: {", ".join(missing)}')
     return positions
+
+
+def find_header(rows):
+    """Encontra o cabeçalho entre as primeiras linhas da primeira aba."""
+    for row_number, header in enumerate(rows, 1):
+        positions = header_positions(header)
+        if all(name in positions for name in REQUIRED_HEADERS):
+            return header, positions
+        if row_number == HEADER_SEARCH_ROWS:
+            break
+    raise ValueError(
+        'Cabeçalho obrigatório não encontrado nas primeiras '
+        f'{HEADER_SEARCH_ROWS} linhas: {", ".join(REQUIRED_HEADERS)}'
+    )
 
 
 def extract_workbook(input_path, output_path):
@@ -58,12 +70,7 @@ def extract_workbook(input_path, output_path):
     try:
         sheet = workbook.active
         rows = sheet.iter_rows(values_only=True)
-        try:
-            header = next(rows)
-        except StopIteration:
-            raise ValueError('A planilha está vazia.') from None
-
-        positions = header_positions(header)
+        header, positions = find_header(rows)
         type_position = positions['TIPO DO EXAME']
         exams = [
             (index, text_value(name))

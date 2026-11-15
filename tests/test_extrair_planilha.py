@@ -27,6 +27,27 @@ def create_workbook(path, headers, rows):
 
 
 class ExtractWorkbookTests(unittest.TestCase):
+    def test_extract_workbook_finds_header_after_introductory_rows(self):
+        with TemporaryDirectory() as directory:
+            workspace = Path(directory)
+            source = workspace / 'exames.xlsx'
+            output = workspace / 'exames.csv'
+            workbook = Workbook()
+            sheet = workbook.active
+            sheet.append(['RELATÓRIO DE EXAMES OCUPACIONAIS'])
+            sheet.append([
+                'FORNECEDOR', 'CPF COLABORADOR', 'NOME COLABORADOR',
+                'CENTRO DE CUSTO', 'TIPO DO EXAME', 'UREIA',
+            ])
+            sheet.append(['Clínica Alfa', '000.000.000-00', 'Ana Exemplo',
+                          'Administrativo', 'Periódico', '12,50'])
+            workbook.save(source)
+
+            count = extract_workbook(source, output)
+
+            self.assertEqual(count, 1)
+            self.assertEqual(read_csv(output)[1][5], 'UREIA')
+
     def test_extract_workbook_creates_one_csv_row_for_each_filled_exam(self):
         with TemporaryDirectory() as directory:
             workspace = Path(directory)
