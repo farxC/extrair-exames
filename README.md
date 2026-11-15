@@ -49,6 +49,28 @@ linhas informativas acima dele são ignorados.
 | tipo do exame | TIPO DO EXAME |
 | valor | conteúdo da célula do exame |
 
+## Preencher uma planilha com resultados de CSV
+
+```sh
+python preencher_planilha.py exames.csv planilha_alvo.xlsx planilha_preenchida.xlsx
+```
+
+O CSV é lido com `;` e usa estritamente as colunas `procedimento`, `cpf` e
+`tipo do exame`; demais colunas são ignoradas. O CPF é comparado somente pelos
+dígitos, permitindo que o CSV use `00000000000` e a planilha use
+`000.000.000-00`.
+
+O script converte cada procedimento para a nomenclatura padronizada informada,
+encontra a coluna correspondente e insere o `tipo do exame` na célula da pessoa
+correta. Caso a célula já tenha conteúdo, concatena usando `; `; valores já
+presentes não são duplicados. O cabeçalho da planilha pode estar nas primeiras
+50 linhas. A planilha original nunca é alterada: o terceiro argumento deve ser
+um novo arquivo `.xlsx`.
+
+O comando falha, sem criar saída, se o CSV não tiver uma das três colunas
+obrigatórias, se houver procedimento sem nomenclatura cadastrada, CPF ausente
+na planilha alvo ou coluna de exame inexistente.
+
 ## Layout esperado
 
 ### Processar uma pasta inteira
